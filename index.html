@@ -349,14 +349,17 @@ function App(){
   const[history,setHistory]=useState({});
   const[status,setStatus]=useState("connecting");
   const[reconnects,setReconnects]=useState(0);
-  const[quantities,setQuantities]=useState(()=>{const q={};COINS.forEach(c=>q[c.symbol]=0);return q;});
-  const[usdtFree,setUsdtFree]=useState(0);
+  const[quantities,setQuantities]=useState(()=>{try{const s=localStorage.getItem("cpro_qty");if(s)return JSON.parse(s);}catch(e){}const q={};COINS.forEach(c=>q[c.symbol]=0);return q;});
+  const[usdtFree,setUsdtFree]=useState(()=>{try{const s=localStorage.getItem("cpro_usdt");if(s)return parseFloat(s);}catch(e){}return 0;});
   const[editMode,setEditMode]=useState(false);
   const[tab,setTab]=useState("dashboard");
   const[sortBy,setSortBy]=useState("value");
   const[filterCat,setFilterCat]=useState("Todas");
-  const[trades,setTrades]=useState(SAMPLE_TRADES);
+  const[trades,setTrades]=useState(()=>{try{const s=localStorage.getItem("cpro_trades");if(s)return JSON.parse(s);}catch(e){}return [];});
   const[time,setTime]=useState(new Date().toLocaleTimeString("es-ES"));
+  useEffect(()=>{try{localStorage.setItem("cpro_qty",JSON.stringify(quantities));}catch(e){}},[quantities]);
+  useEffect(()=>{try{localStorage.setItem("cpro_usdt",String(usdtFree));}catch(e){}},[usdtFree]);
+  useEffect(()=>{try{localStorage.setItem("cpro_trades",JSON.stringify(trades));}catch(e){}},[trades]);
   const wsRef=useRef(null),mountRef=useRef(true);
 
   useEffect(()=>{const t=setInterval(()=>setTime(new Date().toLocaleTimeString("es-ES")),1000);return()=>clearInterval(t);},[]);
@@ -515,7 +518,7 @@ function App(){
               {/* P&L Bars */}
               <div style={cardStyle("#1D6FD1")}>
                 <div style={{fontSize:14,fontWeight:800,color:"#E8E8F0",marginBottom:16}}>💹 P&L por Operación</div>
-                <PnlBars trades={trades}/>
+                {trades.length===0?(<div style={{padding:"30px 0",textAlign:"center",color:"#444460",fontSize:14}}>Sin operaciones aún</div>):(<PnlBars trades={trades}/>)}
               </div>
             </div>
 
