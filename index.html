@@ -47,16 +47,7 @@ const COINS=[
 ];
 const CC={"Layer 1":"#F7931A","Layer 2":"#1D6FD1","DeFi":"#00875A","Infraestr.":"#7B61FF","AI & Datos":"#00BCD4","Nueva L1":"#E91E8C","Exchange":"#FFB300","Meme":"#FF5722","Stablecoin":"#4CAF50"};
 
-const SAMPLE_TRADES=[
-  {par:"BTC/USDT",tipo:"LONG",qty:0.05,entrada:65000,sl:63500,tp:68000,salida:67800,resultado:"WIN",fecha:"2025-01-05"},
-  {par:"ETH/USDT",tipo:"LONG",qty:0.5,entrada:3200,sl:3100,tp:3500,salida:3480,resultado:"WIN",fecha:"2025-01-12"},
-  {par:"SOL/USDT",tipo:"LONG",qty:5,entrada:165,sl:160,tp:185,salida:158,resultado:"LOSS",fecha:"2025-01-18"},
-  {par:"BTC/USDT",tipo:"SHORT",qty:0.03,entrada:68500,sl:69500,tp:65000,salida:65200,resultado:"WIN",fecha:"2025-01-25"},
-  {par:"BNB/USDT",tipo:"LONG",qty:2,entrada:560,sl:545,tp:610,salida:605,resultado:"WIN",fecha:"2025-02-02"},
-  {par:"ETH/USDT",tipo:"SHORT",qty:0.3,entrada:3400,sl:3500,tp:3100,salida:3450,resultado:"LOSS",fecha:"2025-02-10"},
-  {par:"SOL/USDT",tipo:"LONG",qty:8,entrada:140,sl:135,tp:165,salida:162,resultado:"WIN",fecha:"2025-02-18"},
-  {par:"BTC/USDT",tipo:"LONG",qty:0.04,entrada:62000,sl:60000,tp:67000,salida:66500,resultado:"WIN",fecha:"2025-02-25"},
-];
+const SAMPLE_TRADES=[];
 
 // ── HELPERS ──────────────────────────────────────────────────
 const fmt=n=>{if(!n&&n!==0)return"—";if(n>=1000)return"$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=1)return"$"+n.toFixed(2);if(n>=0.01)return"$"+n.toFixed(4);return"$"+n.toFixed(8)};
@@ -358,8 +349,8 @@ function App(){
   const[history,setHistory]=useState({});
   const[status,setStatus]=useState("connecting");
   const[reconnects,setReconnects]=useState(0);
-  const[quantities,setQuantities]=useState(()=>{const q={};COINS.forEach(c=>q[c.symbol]=0);q.BTC=0.05;q.ETH=0.5;q.SOL=5;q.BNB=2;return q;});
-  const[usdtFree,setUsdtFree]=useState(1500);
+  const[quantities,setQuantities]=useState(()=>{const q={};COINS.forEach(c=>q[c.symbol]=0);return q;});
+  const[usdtFree,setUsdtFree]=useState(0);
   const[editMode,setEditMode]=useState(false);
   const[tab,setTab]=useState("dashboard");
   const[sortBy,setSortBy]=useState("value");
@@ -573,9 +564,25 @@ function FourCommas({trades,setTrades}){
   const E={par:"",tipo:"LONG",qty:"",entrada:"",sl:"",tp:"",salida:"",resultado:"",fecha:""};
   const[nt,setNt]=useState(E);
   const[showForm,setShowForm]=useState(false);
+  const[editIdx,setEditIdx]=useState(null);
+  const[confirmDel,setConfirmDel]=useState(null);
   const wins=trades.filter(t=>t.resultado==="WIN").length;
   const totalPnl=trades.reduce((s,t)=>s+(calcPnl(t)||0),0);
   const wr=trades.length>0?(wins/trades.length)*100:0;
+
+  const handleEdit=(t,i)=>{setNt({...t});setEditIdx(i);setShowForm(true);window.scrollTo({top:0,behavior:"smooth"});};
+  const handleSave=()=>{
+    if(!nt.par)return;
+    if(editIdx!==null){const n=[...trades];n[editIdx]=nt;setTrades(n);setEditIdx(null);}
+    else{setTrades(t=>[...t,nt]);}
+    setNt(E);setShowForm(false);
+  };
+  const handleDelete=(i)=>{setTrades(t=>t.filter((_,idx)=>idx!==i));setConfirmDel(null);};
+  const handleCancel=()=>{setShowForm(false);setNt(E);setEditIdx(null);};
+
+  const inputStyle={width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"};
+  const selStyle={width:"100%",background:"#1A1A2E",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"};
+
   return(
     <div style={{animation:"fadeIn 0.3s ease"}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,padding:"22px 0 0"}}>
@@ -584,39 +591,75 @@ function FourCommas({trades,setTrades}){
         ))}
       </div>
       <div style={{display:"flex",justifyContent:"flex-end",padding:"18px 0 8px"}}>
-        <button onClick={()=>setShowForm(!showForm)} style={{padding:"9px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:showForm?"rgba(255,255,255,0.06)":"linear-gradient(135deg,#F7931A,#E65100)",color:showForm?"#888":"#000"}}>{showForm?"✕ Cancelar":"+ Nueva Operación"}</button>
+        <button onClick={()=>{if(showForm&&editIdx===null){handleCancel();}else{setEditIdx(null);setNt(E);setShowForm(!showForm);}}} style={{padding:"9px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:showForm?"rgba(255,255,255,0.06)":"linear-gradient(135deg,#F7931A,#E65100)",color:showForm?"#888":"#000"}}>
+          {showForm?"✕ Cancelar":"+ Nueva Operación"}
+        </button>
       </div>
+
+      {/* FORM — Nueva o Editar */}
       {showForm&&(
-        <div style={{background:"rgba(247,147,26,0.05)",border:"1px solid rgba(247,147,26,0.2)",borderRadius:12,padding:20,marginBottom:16,display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,animation:"fadeIn 0.2s ease"}}>
-          {[["par","Par","BTC/USDT"],["fecha","Fecha","2025-01-01"],["qty","Cantidad","0.05"],["entrada","Entrada","65000"],["sl","Stop Loss","63500"],["tp","Take Profit","68000"],["salida","Salida","67800"]].map(([key,label,ph])=>(
-            <div key={key}><div style={{fontSize:13,color:"#BBBBCC",marginBottom:4}}>{label}</div><input style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"}} placeholder={ph} value={nt[key]} onChange={e=>setNt(n=>({...n,[key]:e.target.value}))}/></div>
-          ))}
-          <div><div style={{fontSize:13,color:"#BBBBCC",marginBottom:4}}>Tipo</div><select style={{width:"100%",background:"#1A1A2E",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"}} value={nt.tipo} onChange={e=>setNt(n=>({...n,tipo:e.target.value}))}><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
-          <div><div style={{fontSize:13,color:"#BBBBCC",marginBottom:4}}>Resultado</div><select style={{width:"100%",background:"#1A1A2E",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"}} value={nt.resultado} onChange={e=>setNt(n=>({...n,resultado:e.target.value}))}><option value="">—</option><option value="WIN">WIN</option><option value="LOSS">LOSS</option></select></div>
-          <div style={{display:"flex",alignItems:"flex-end"}}><button onClick={()=>{if(!nt.par)return;setTrades(t=>[...t,nt]);setNt(E);setShowForm(false);}} style={{width:"100%",padding:8,borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:"linear-gradient(135deg,#00C853,#00875A)",color:"#fff"}}>✓ Agregar</button></div>
+        <div style={{background:editIdx!==null?"rgba(29,111,209,0.07)":"rgba(247,147,26,0.05)",border:`1px solid ${editIdx!==null?"rgba(29,111,209,0.3)":"rgba(247,147,26,0.2)"}`,borderRadius:12,padding:20,marginBottom:16,animation:"fadeIn 0.2s ease"}}>
+          {editIdx!==null&&(
+            <div style={{marginBottom:14,padding:"8px 14px",background:"rgba(29,111,209,0.15)",borderRadius:8,fontSize:13,color:"#6CB4FF",fontWeight:700}}>
+              ✏️ Editando operación #{editIdx+1} — {trades[editIdx]?.par}
+            </div>
+          )}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
+            {[["par","Par","BTC/USDT"],["fecha","Fecha","2025-01-01"],["qty","Cantidad","0.05"],["entrada","Entrada","65000"],["sl","Stop Loss","63500"],["tp","Take Profit","68000"],["salida","Salida","67800"]].map(([key,label,ph])=>(
+              <div key={key}><div style={{fontSize:13,color:"#BBBBCC",marginBottom:4}}>{label}</div><input style={inputStyle} placeholder={ph} value={nt[key]} onChange={e=>setNt(n=>({...n,[key]:e.target.value}))}/></div>
+            ))}
+            <div><div style={{fontSize:13,color:"#BBBBCC",marginBottom:4}}>Tipo</div><select style={selStyle} value={nt.tipo} onChange={e=>setNt(n=>({...n,tipo:e.target.value}))}><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
+            <div><div style={{fontSize:13,color:"#BBBBCC",marginBottom:4}}>Resultado</div><select style={selStyle} value={nt.resultado} onChange={e=>setNt(n=>({...n,resultado:e.target.value}))}><option value="">—</option><option value="WIN">WIN</option><option value="LOSS">LOSS</option></select></div>
+            <div style={{display:"flex",alignItems:"flex-end",gap:8}}>
+              <button onClick={handleSave} style={{flex:1,padding:8,borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:editIdx!==null?"linear-gradient(135deg,#1D6FD1,#0D47A1)":"linear-gradient(135deg,#00C853,#00875A)",color:"#fff"}}>
+                {editIdx!==null?"💾 Guardar":"✓ Agregar"}
+              </button>
+              {editIdx!==null&&<button onClick={handleCancel} style={{padding:"8px 12px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:"rgba(255,255,255,0.06)",color:"#888"}}>✕</button>}
+            </div>
+          </div>
         </div>
       )}
+
+      {/* TABLA */}
       <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:14,overflowX:"auto"}}>
-        <div style={{display:"grid",gridTemplateColumns:"80px 110px 60px 65px 95px 95px 95px 95px 80px 90px",padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)",fontSize:14,color:"#CCCCDD",textTransform:"uppercase",letterSpacing:"0.6px",minWidth:870}}>
-          {["Fecha","Par","Tipo","Cant.","Entrada","Stop Loss","Take Profit","Salida","Result.","P&L"].map(h=><div key={h} style={{textAlign:"right",...(h==="Par"||h==="Tipo"?{textAlign:"left"}:{})}}>{h}</div>)}
+        <div style={{display:"grid",gridTemplateColumns:"80px 110px 60px 65px 95px 95px 95px 95px 80px 90px 90px",padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)",fontSize:13,color:"#CCCCDD",textTransform:"uppercase",letterSpacing:"0.6px",minWidth:960}}>
+          {["Fecha","Par","Tipo","Cant.","Entrada","Stop Loss","Take Profit","Salida","Result.","P&L","Acciones"].map(h=><div key={h} style={{textAlign:"right",...(h==="Par"||h==="Tipo"||h==="Acciones"?{textAlign:"left"}:{})}}>{h}</div>)}
         </div>
-        {trades.map((t,i)=>{const pnl=calcPnl(t);const isWin=t.resultado==="WIN";return(
-          <div key={i} style={{display:"grid",gridTemplateColumns:"80px 110px 60px 65px 95px 95px 95px 95px 80px 90px",padding:"10px 16px",alignItems:"center",borderBottom:"1px solid rgba(255,255,255,0.025)",background:i%2===0?"transparent":"rgba(255,255,255,0.01)",minWidth:870}}>
+        {trades.length===0&&(
+          <div style={{padding:"40px 20px",textAlign:"center",color:"#444460",fontSize:14}}>
+            No hay operaciones registradas. Haz clic en "+ Nueva Operación" para agregar una.
+          </div>
+        )}
+        {trades.map((t,i)=>{const pnl=calcPnl(t);const isWin=t.resultado==="WIN";const isEditing=editIdx===i;return(
+          <div key={i} style={{display:"grid",gridTemplateColumns:"80px 110px 60px 65px 95px 95px 95px 95px 80px 90px 90px",padding:"10px 16px",alignItems:"center",borderBottom:"1px solid rgba(255,255,255,0.025)",background:isEditing?"rgba(29,111,209,0.08)":i%2===0?"transparent":"rgba(255,255,255,0.01)",minWidth:960,transition:"background 0.2s"}}>
             <div style={{fontSize:13,color:"#888899",fontFamily:"Space Mono,monospace"}}>{t.fecha}</div>
             <div style={{fontSize:13,fontWeight:700}}>{t.par}</div>
             <div style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:4,textAlign:"center",background:t.tipo==="LONG"?"rgba(0,200,83,0.15)":"rgba(255,61,0,0.15)",color:t.tipo==="LONG"?"#00C853":"#FF3D00"}}>{t.tipo}</div>
-            <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:14,color:"#CCCCDD"}}>{t.qty}</div>
+            <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:13,color:"#CCCCDD"}}>{t.qty}</div>
             <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:12,color:"#00C853"}}>${parseFloat(t.entrada).toLocaleString()}</div>
             <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:12,color:"#1D6FD1"}}>${parseFloat(t.sl).toLocaleString()}</div>
             <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:12,color:"#F7931A"}}>${parseFloat(t.tp).toLocaleString()}</div>
-            <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:12,color:"#FF3D00"}}>${parseFloat(t.salida).toLocaleString()}</div>
+            <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:12,color:"#FF5722"}}>${parseFloat(t.salida).toLocaleString()}</div>
             <div style={{textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:20,background:isWin?"rgba(0,200,83,0.15)":t.resultado?"rgba(255,61,0,0.15)":"transparent",color:isWin?"#00C853":t.resultado?"#FF3D00":"#555570"}}>{t.resultado||"—"}</span></div>
             <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:12,fontWeight:700,color:pnl===null?"#444460":pnl>=0?"#00C853":"#FF3D00"}}>{pnl===null?"—":(pnl>=0?"+":"")+"$"+pnl.toFixed(2)}</div>
+            {/* BOTONES EDITAR / ELIMINAR */}
+            <div style={{display:"flex",gap:5,alignItems:"center"}}>
+              <button onClick={()=>handleEdit(t,i)} title="Editar" style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:13,background:"rgba(29,111,209,0.2)",color:"#6CB4FF",fontWeight:700,transition:"background 0.2s"}}>✏️</button>
+              {confirmDel===i?(
+                <div style={{display:"flex",gap:4}}>
+                  <button onClick={()=>handleDelete(i)} style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,background:"rgba(255,61,0,0.3)",color:"#FF3D00"}}>Sí</button>
+                  <button onClick={()=>setConfirmDel(null)} style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,background:"rgba(255,255,255,0.06)",color:"#888"}}>No</button>
+                </div>
+              ):(
+                <button onClick={()=>setConfirmDel(i)} title="Eliminar" style={{padding:"4px 8px",borderRadius:6,border:"none",cursor:"pointer",fontSize:13,background:"rgba(255,61,0,0.15)",color:"#FF5722",fontWeight:700,transition:"background 0.2s"}}>🗑️</button>
+              )}
+            </div>
           </div>
         );})}
-        <div style={{display:"grid",gridTemplateColumns:"80px 110px 60px 65px 95px 95px 95px 95px 80px 90px",padding:"12px 16px",borderTop:"1px solid rgba(247,147,26,0.2)",background:"rgba(247,147,26,0.04)",minWidth:870}}>
-          <div style={{gridColumn:"1/9",fontSize:12,fontWeight:800,color:"#F7931A"}}>P&L ACUMULADO</div><div/>
+        <div style={{display:"grid",gridTemplateColumns:"80px 110px 60px 65px 95px 95px 95px 95px 80px 90px 90px",padding:"12px 16px",borderTop:"1px solid rgba(247,147,26,0.2)",background:"rgba(247,147,26,0.04)",minWidth:960}}>
+          <div style={{gridColumn:"1/10",fontSize:13,fontWeight:800,color:"#F7931A"}}>P&L ACUMULADO</div><div/>
           <div style={{textAlign:"right",fontFamily:"Space Mono,monospace",fontSize:14,fontWeight:800,color:totalPnl>=0?"#00C853":"#FF3D00"}}>{(totalPnl>=0?"+":"")+"$"+totalPnl.toFixed(2)}</div>
+          <div/>
         </div>
       </div>
       <div style={{height:40}}/>
