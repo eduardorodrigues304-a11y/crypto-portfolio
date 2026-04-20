@@ -14,7 +14,6 @@
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
   @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   .coin-row:hover{background:rgba(247,147,26,0.05)!important}
-  .intercambio-row:hover{background:rgba(255,255,255,0.04)!important}
   ::-webkit-scrollbar{width:4px}
   ::-webkit-scrollbar-thumb{background:rgba(247,147,26,0.3);border-radius:2px}
   select option{background:#1A1A2E;color:#E8E8F0}
@@ -65,308 +64,6 @@ function FlashPrice({price}){
   return<span style={{fontFamily:"'Space Mono',monospace",fontSize:13,fontWeight:700,color:"#E8E8F0",background:flash==="up"?"rgba(0,200,83,0.2)":flash==="down"?"rgba(255,61,0,0.2)":"transparent",borderRadius:4,padding:"1px 4px",transition:"background 0.3s"}}>{fmt(price)}</span>;
 }
 
-// ─── NUEVA PESTAÑA: INTERCAMBIO ───────────────────────────────────────────────
-function fmtCross(n){
-  if(!n||isNaN(n))return"—";
-  if(n>=1000)return n.toLocaleString("en-US",{minimumFractionDigits:4,maximumFractionDigits:4});
-  if(n>=1)return n.toFixed(6);
-  if(n>=0.0001)return n.toFixed(8);
-  return n.toExponential(4);
-}
-
-// Pares cruzados predefinidos
-const PARES_PREDEFINIDOS=[
-  ["ETH","BTC"],["SOL","BTC"],["BNB","BTC"],["ADA","BTC"],["XRP","BTC"],
-  ["ETH","SOL"],["BNB","ETH"],["SOL","ETH"],["AVAX","ETH"],["LINK","ETH"],
-  ["ADA","ETH"],["DOT","ETH"],["MATIC","ETH"],["UNI","ETH"],["LTC","BTC"],
-  ["ATOM","BTC"],["DOGE","BTC"],["SOL","BNB"],["ARB","ETH"],["OP","ETH"],
-];
-
-function Intercambio({prices}){
-  const monedas=COINS.filter(c=>c.symbol!=="USDT").map(c=>c.symbol);
-  const gp=sym=>sym==="USDT"?1:(prices[sym]||0);
-
-  // Calculadora
-  const[desde,setDesde]=useState("ETH");
-  const[hacia,setHacia]=useState("BTC");
-  const[monto,setMonto]=useState("1");
-  const[historial,setHistorial]=useState([]);
-
-  const precioDesde=gp(desde);
-  const precioHacia=gp(hacia);
-  const tasaCruzada=precioHacia>0?precioDesde/precioHacia:0;
-  const resultado=parseFloat(monto||0)*tasaCruzada;
-
-  const guardarConversion=()=>{
-    if(!monto||parseFloat(monto)<=0||!tasaCruzada)return;
-    const nueva={
-      id:Date.now(),
-      desde,hacia,
-      monto:parseFloat(monto),
-      resultado,
-      tasa:tasaCruzada,
-      hora:new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"}),
-      fecha:new Date().toLocaleDateString("es-ES"),
-    };
-    setHistorial(h=>[nueva,...h].slice(0,20));
-  };
-
-  const intercambiarMonedas=()=>{
-    setDesde(hacia);
-    setHacia(desde);
-  };
-
-  // Tabla de pares
-  const[busqueda,setBusqueda]=useState("");
-  const pares=PARES_PREDEFINIDOS.filter(([a,b])=>
-    a.toLowerCase().includes(busqueda.toLowerCase())||
-    b.toLowerCase().includes(busqueda.toLowerCase())
-  );
-
-  const inpStyle={
-    width:"100%",
-    background:"#18182A",
-    border:"2px solid #2E2E48",
-    borderRadius:10,
-    padding:"14px 16px",
-    color:"#E8E8F0",
-    fontSize:18,
-    fontFamily:"'Space Mono',monospace",
-    fontWeight:700,
-    outline:"none",
-  };
-  const selectStyle={
-    width:"100%",
-    background:"#18182A",
-    border:"2px solid #2E2E48",
-    borderRadius:10,
-    padding:"14px 16px",
-    color:"#E8E8F0",
-    fontSize:18,
-    fontWeight:700,
-    outline:"none",
-    cursor:"pointer",
-  };
-  const labelStyle={fontSize:15,fontWeight:700,color:"#AAAACC",marginBottom:8,display:"block",letterSpacing:"0.3px"};
-
-  return(
-    <div style={{animation:"fadeIn 0.3s ease",paddingTop:24}}>
-
-      {/* ── CALCULADORA ── */}
-      <div style={{background:"#111120",border:"2px solid #2E2E48",borderRadius:16,padding:28,marginBottom:32}}>
-        <div style={{fontSize:22,fontWeight:800,color:"#E8E8F0",marginBottom:6}}>Calculadora de Conversión</div>
-        <div style={{fontSize:15,color:"#888899",marginBottom:28}}>Convierte entre cualquier par de criptomonedas usando precios en tiempo real</div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr auto 1fr",gap:16,alignItems:"end",marginBottom:20}}>
-          {/* Desde */}
-          <div>
-            <label style={labelStyle}>Moneda de origen</label>
-            <select style={selectStyle} value={desde} onChange={e=>setDesde(e.target.value)}>
-              {monedas.map(m=><option key={m} value={m}>{m} — {COINS.find(c=>c.symbol===m)?.name}</option>)}
-            </select>
-            <input
-              style={{...inpStyle,marginTop:10}}
-              type="number"
-              min="0"
-              placeholder="Ingresa cantidad..."
-              value={monto}
-              onChange={e=>setMonto(e.target.value)}
-            />
-            <div style={{fontSize:13,color:"#666680",marginTop:6,fontFamily:"'Space Mono',monospace"}}>
-              Precio: {fmt(precioDesde)} USD
-            </div>
-          </div>
-
-          {/* Botón intercambio */}
-          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,paddingBottom:48}}>
-            <button
-              onClick={intercambiarMonedas}
-              style={{
-                width:52,height:52,borderRadius:"50%",
-                border:"2px solid #3A3A5C",
-                background:"#1A1A30",
-                color:"#AAAACC",
-                fontSize:22,cursor:"pointer",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                transition:"all 0.2s",
-              }}
-              title="Intercambiar monedas"
-            >⇄</button>
-          </div>
-
-          {/* Hacia */}
-          <div>
-            <label style={labelStyle}>Moneda destino</label>
-            <select style={selectStyle} value={hacia} onChange={e=>setHacia(e.target.value)}>
-              {monedas.map(m=><option key={m} value={m}>{m} — {COINS.find(c=>c.symbol===m)?.name}</option>)}
-            </select>
-            <div style={{...inpStyle,marginTop:10,background:"#0D0D1A",border:"2px solid #3A3A5C",color:"#C8C8E0",userSelect:"none"}}>
-              {resultado>0?fmtCross(resultado):"—"}
-            </div>
-            <div style={{fontSize:13,color:"#666680",marginTop:6,fontFamily:"'Space Mono',monospace"}}>
-              Precio: {fmt(precioHacia)} USD
-            </div>
-          </div>
-        </div>
-
-        {/* Tasa cruzada */}
-        {tasaCruzada>0&&(
-          <div style={{background:"#0D0D1A",border:"1px solid #2E2E48",borderRadius:12,padding:"16px 20px",marginBottom:20,display:"flex",flexWrap:"wrap",gap:16,alignItems:"center",justifyContent:"space-between"}}>
-            <div>
-              <div style={{fontSize:13,color:"#888899",marginBottom:4}}>Tasa cruzada actual</div>
-              <div style={{fontSize:20,fontWeight:800,color:"#E8E8F0",fontFamily:"'Space Mono',monospace"}}>
-                1 {desde} = {fmtCross(tasaCruzada)} {hacia}
-              </div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:13,color:"#888899",marginBottom:4}}>Inversa</div>
-              <div style={{fontSize:16,fontWeight:700,color:"#AAAACC",fontFamily:"'Space Mono',monospace"}}>
-                1 {hacia} = {fmtCross(1/tasaCruzada)} {desde}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <button
-          onClick={guardarConversion}
-          style={{
-            padding:"14px 32px",
-            borderRadius:10,border:"none",cursor:"pointer",
-            fontSize:16,fontWeight:800,
-            background:"#2A2A4A",
-            color:"#C8C8E0",
-            letterSpacing:"0.5px",
-            transition:"all 0.2s",
-            border:"2px solid #3A3A5C",
-          }}
-        >
-          Guardar en historial
-        </button>
-      </div>
-
-      {/* ── TABLA DE PARES CRUZADOS ── */}
-      <div style={{background:"#111120",border:"2px solid #2E2E48",borderRadius:16,padding:28,marginBottom:32}}>
-        <div style={{fontSize:22,fontWeight:800,color:"#E8E8F0",marginBottom:6}}>Tabla de Pares Cruzados</div>
-        <div style={{fontSize:15,color:"#888899",marginBottom:20}}>Tasas de intercambio calculadas en tiempo real desde los precios USDT</div>
-
-        <input
-          style={{...inpStyle,marginBottom:20,fontSize:15,fontWeight:500}}
-          placeholder="Buscar par — por ejemplo: ETH o BTC..."
-          value={busqueda}
-          onChange={e=>setBusqueda(e.target.value)}
-        />
-
-        <div style={{overflowX:"auto"}}>
-          {/* Encabezado */}
-          <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",padding:"12px 16px",borderBottom:"2px solid #2E2E48",fontSize:13,fontWeight:700,color:"#777799",textTransform:"uppercase",letterSpacing:"0.8px",minWidth:600}}>
-            <div>#</div>
-            <div>Par</div>
-            <div style={{textAlign:"right"}}>Precio A (USD)</div>
-            <div style={{textAlign:"right"}}>Precio B (USD)</div>
-            <div style={{textAlign:"right"}}>Tasa A → B</div>
-          </div>
-
-          {pares.map(([a,b],i)=>{
-            const pA=gp(a),pB=gp(b);
-            const tasa=pB>0?pA/pB:0;
-            return(
-              <div key={`${a}-${b}`} className="intercambio-row" style={{
-                display:"grid",gridTemplateColumns:"60px 1fr 1fr 1fr 1fr",
-                padding:"14px 16px",
-                borderBottom:"1px solid #1C1C30",
-                alignItems:"center",
-                minWidth:600,
-                transition:"background 0.15s",
-              }}>
-                <div style={{fontSize:14,color:"#555570",fontFamily:"'Space Mono',monospace"}}>{(i+1).toString().padStart(2,"0")}</div>
-                <div>
-                  <span style={{fontSize:18,fontWeight:800,color:"#E8E8F0"}}>{a}</span>
-                  <span style={{fontSize:18,fontWeight:400,color:"#555570",margin:"0 6px"}}>/</span>
-                  <span style={{fontSize:18,fontWeight:800,color:"#AAAACC"}}>{b}</span>
-                </div>
-                <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:14,fontWeight:700,color:"#C8C8E0"}}>{fmt(pA)}</div>
-                <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:14,fontWeight:700,color:"#C8C8E0"}}>{fmt(pB)}</div>
-                <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:15,fontWeight:800,color:"#E8E8F0"}}>
-                  {tasa>0?fmtCross(tasa):"Sin datos"}
-                </div>
-              </div>
-            );
-          })}
-
-          {pares.length===0&&(
-            <div style={{padding:"40px 16px",textAlign:"center",color:"#555570",fontSize:16}}>
-              No se encontraron pares con "{busqueda}"
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── HISTORIAL DE CONVERSIONES ── */}
-      <div style={{background:"#111120",border:"2px solid #2E2E48",borderRadius:16,padding:28,marginBottom:32}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-          <div>
-            <div style={{fontSize:22,fontWeight:800,color:"#E8E8F0"}}>Historial de Conversiones</div>
-            <div style={{fontSize:15,color:"#888899",marginTop:4}}>{historial.length} conversión{historial.length!==1?"es":""} guardada{historial.length!==1?"s":""}</div>
-          </div>
-          {historial.length>0&&(
-            <button
-              onClick={()=>setHistorial([])}
-              style={{padding:"10px 20px",borderRadius:8,border:"2px solid #3A3A5C",background:"transparent",color:"#888899",fontSize:14,fontWeight:700,cursor:"pointer"}}
-            >
-              Limpiar todo
-            </button>
-          )}
-        </div>
-
-        {historial.length===0?(
-          <div style={{padding:"40px 0",textAlign:"center"}}>
-            <div style={{fontSize:40,marginBottom:12}}>🔄</div>
-            <div style={{fontSize:17,color:"#555570",fontWeight:600}}>Aún no hay conversiones guardadas</div>
-            <div style={{fontSize:14,color:"#444460",marginTop:6}}>Usa la calculadora de arriba y pulsa "Guardar en historial"</div>
-          </div>
-        ):(
-          <div style={{overflowX:"auto",marginTop:20}}>
-            <div style={{display:"grid",gridTemplateColumns:"120px 1fr 1fr 1fr 120px",padding:"12px 16px",borderBottom:"2px solid #2E2E48",fontSize:12,fontWeight:700,color:"#666680",textTransform:"uppercase",letterSpacing:"0.8px",minWidth:640}}>
-              <div>Fecha / Hora</div>
-              <div>Convertí</div>
-              <div style={{textAlign:"right"}}>Resultado</div>
-              <div style={{textAlign:"right"}}>Tasa usada</div>
-              <div style={{textAlign:"right"}}>Par</div>
-            </div>
-            {historial.map(h=>(
-              <div key={h.id} style={{display:"grid",gridTemplateColumns:"120px 1fr 1fr 1fr 120px",padding:"14px 16px",borderBottom:"1px solid #1C1C30",alignItems:"center",minWidth:640}}>
-                <div>
-                  <div style={{fontSize:13,color:"#AAAACC",fontFamily:"'Space Mono',monospace"}}>{h.hora}</div>
-                  <div style={{fontSize:12,color:"#555570",marginTop:2}}>{h.fecha}</div>
-                </div>
-                <div>
-                  <span style={{fontSize:18,fontWeight:800,color:"#E8E8F0",fontFamily:"'Space Mono',monospace"}}>{h.monto.toLocaleString("en-US",{maximumFractionDigits:8})}</span>
-                  <span style={{fontSize:15,color:"#888899",marginLeft:6}}>{h.desde}</span>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <span style={{fontSize:18,fontWeight:800,color:"#C8C8E0",fontFamily:"'Space Mono',monospace"}}>{fmtCross(h.resultado)}</span>
-                  <span style={{fontSize:15,color:"#888899",marginLeft:6}}>{h.hacia}</span>
-                </div>
-                <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:13,color:"#777799"}}>
-                  1 {h.desde} = {fmtCross(h.tasa)} {h.hacia}
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <span style={{fontSize:14,fontWeight:800,padding:"4px 10px",borderRadius:8,background:"#1A1A30",border:"1px solid #2E2E48",color:"#AAAACC"}}>
-                    {h.desde}/{h.hacia}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{height:40}}/>
-    </div>
-  );
-}
-// ─────────────────────────────────────────────────────────────────────────────
-
 function App(){
   const[prices,setPrices]=useState({});
   const[changes,setChanges]=useState({});
@@ -414,18 +111,11 @@ function App(){
   if(sortBy==="name")dr.sort((a,b)=>a.symbol.localeCompare(b.symbol));
   const sc=status==="live"?"#00C853":status==="connecting"?"#FFB300":"#FF3D00";
 
-  const TABS=[
-    ["dashboard","🏦 Tablero"],
-    ["operaciones","🎯 4 Comas"],
-    ["categorias","📂 Categorías"],
-    ["intercambio","🔄 Intercambio"],
-  ];
-
   return(
     <div style={{minHeight:"100vh",background:"#07070F",color:"#E8E8F0",fontFamily:"'DM Sans',sans-serif"}}>
       <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,backgroundImage:"linear-gradient(rgba(247,147,26,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(247,147,26,0.03) 1px,transparent 1px)",backgroundSize:"40px 40px",pointerEvents:"none",zIndex:0}}/>
       <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto",padding:"0 20px"}}>
-        {/* ENCABEZADO */}
+        {/* HEADER */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"20px 0 16px",borderBottom:"1px solid rgba(247,147,26,0.15)"}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <div style={{width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,#F7931A,#E65100)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:900,color:"#fff",boxShadow:"0 0 20px rgba(247,147,26,0.4)"}}>₿</div>
@@ -437,20 +127,19 @@ function App(){
           <div style={{display:"flex",alignItems:"center",gap:16}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <div style={{width:8,height:8,borderRadius:"50%",background:sc,boxShadow:status==="live"?`0 0 8px ${sc}`:"none",animation:status==="live"?"pulse 2s infinite":"none"}}/>
-              <span style={{fontSize:11,color:sc,fontFamily:"'Space Mono',monospace"}}>{status==="live"?"BINANCE EN VIVO":status==="connecting"?"CONECTANDO...":"RECONECTANDO ("+reconnects+")"}</span>
+              <span style={{fontSize:11,color:sc,fontFamily:"'Space Mono',monospace"}}>{status==="live"?"BINANCE LIVE":status==="connecting"?"CONECTANDO...":"RECONECTANDO ("+reconnects+")"}</span>
             </div>
             <span style={{fontSize:11,color:"#444460",fontFamily:"'Space Mono',monospace"}}>{time}</span>
           </div>
         </div>
-
-        {/* PESTAÑAS */}
-        <div style={{display:"flex",gap:4,padding:"16px 0 0",flexWrap:"wrap"}}>
-          {TABS.map(([id,label])=>(
+        {/* TABS */}
+        <div style={{display:"flex",gap:4,padding:"16px 0 0"}}>
+          {[["dashboard","🏦 Dashboard"],["operaciones","🎯 4 Comas"],["categorias","📂 Categorías"]].map(([id,label])=>(
             <button key={id} onClick={()=>setTab(id)} style={{padding:"8px 20px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:600,background:tab===id?"rgba(247,147,26,0.15)":"transparent",color:tab===id?"#F7931A":"#666680",borderBottom:tab===id?"2px solid #F7931A":"2px solid transparent",transition:"all 0.2s"}}>{label}</button>
           ))}
         </div>
 
-        {/* TABLERO */}
+        {/* DASHBOARD */}
         {tab==="dashboard"&&(
           <div style={{animation:"fadeIn 0.3s ease"}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:16,padding:"24px 0 0"}}>
@@ -524,7 +213,6 @@ function App(){
 
         {tab==="operaciones"&&<FourCommas/>}
         {tab==="categorias"&&<Categories rows={rows} totalPort={totalPort}/>}
-        {tab==="intercambio"&&<Intercambio prices={prices}/>}
       </div>
     </div>
   );
@@ -548,7 +236,7 @@ function FourCommas(){
   return(
     <div style={{animation:"fadeIn 0.3s ease"}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:14,padding:"24px 0 0"}}>
-        {[{l:"Total Operaciones",v:trades.length,c:"#F7931A"},{l:"Ganadas",v:wins,c:"#00C853"},{l:"Perdidas",v:trades.filter(t=>t.resultado==="LOSS").length,c:"#FF3D00"},{l:"Tasa de Éxito",v:wr.toFixed(1)+"%",c:wr>=50?"#00C853":"#FF3D00"},{l:"P&L Total",v:(totalPnl>=0?"+":"")+"$"+totalPnl.toFixed(2),c:totalPnl>=0?"#00C853":"#FF3D00"}].map(({l,v,c})=>(
+        {[{l:"Total Trades",v:trades.length,c:"#F7931A"},{l:"Ganadas",v:wins,c:"#00C853"},{l:"Perdidas",v:trades.filter(t=>t.resultado==="LOSS").length,c:"#FF3D00"},{l:"Win Rate",v:wr.toFixed(1)+"%",c:wr>=50?"#00C853":"#FF3D00"},{l:"P&L Total",v:(totalPnl>=0?"+":"")+"$"+totalPnl.toFixed(2),c:totalPnl>=0?"#00C853":"#FF3D00"}].map(({l,v,c})=>(
           <div key={l} style={{background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)",borderTop:`3px solid ${c}`,borderRadius:12,padding:"18px 20px"}}>
             <div style={{fontSize:11,color:"#555570",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:8}}>{l}</div>
             <div style={{fontSize:22,fontWeight:800,color:c,letterSpacing:"-0.5px"}}>{v}</div>
@@ -564,7 +252,7 @@ function FourCommas(){
             <div key={key}><div style={{fontSize:11,color:"#666680",marginBottom:4}}>{label}</div><input style={{width:"100%",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"}} placeholder={ph} value={nt[key]} onChange={e=>setNt(n=>({...n,[key]:e.target.value}))}/></div>
           ))}
           <div><div style={{fontSize:11,color:"#666680",marginBottom:4}}>Tipo</div><select style={{width:"100%",background:"#1A1A2E",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"}} value={nt.tipo} onChange={e=>setNt(n=>({...n,tipo:e.target.value}))}><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
-          <div><div style={{fontSize:11,color:"#666680",marginBottom:4}}>Resultado</div><select style={{width:"100%",background:"#1A1A2E",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"}} value={nt.resultado} onChange={e=>setNt(n=>({...n,resultado:e.target.value}))}><option value="">—</option><option value="WIN">Ganada</option><option value="LOSS">Perdida</option></select></div>
+          <div><div style={{fontSize:11,color:"#666680",marginBottom:4}}>Resultado</div><select style={{width:"100%",background:"#1A1A2E",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,padding:"7px 10px",color:"#E8E8F0",fontSize:13,outline:"none"}} value={nt.resultado} onChange={e=>setNt(n=>({...n,resultado:e.target.value}))}><option value="">—</option><option value="WIN">WIN</option><option value="LOSS">LOSS</option></select></div>
           <div style={{display:"flex",alignItems:"flex-end"}}><button onClick={()=>{if(!nt.par)return;setTrades(t=>[...t,nt]);setNt(E);setShowForm(false);}} style={{width:"100%",padding:8,borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,background:"linear-gradient(135deg,#00C853,#00875A)",color:"#fff"}}>✓ Agregar</button></div>
         </div>
       )}
@@ -582,7 +270,7 @@ function FourCommas(){
             <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:12,color:"#1D6FD1"}}>${parseFloat(t.sl).toLocaleString()}</div>
             <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:12,color:"#F7931A"}}>${parseFloat(t.tp).toLocaleString()}</div>
             <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:12,color:"#FF3D00"}}>${parseFloat(t.salida).toLocaleString()}</div>
-            <div style={{textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:20,background:isWin?"rgba(0,200,83,0.15)":t.resultado?"rgba(255,61,0,0.15)":"transparent",color:isWin?"#00C853":t.resultado?"#FF3D00":"#555570"}}>{t.resultado==="WIN"?"Ganada":t.resultado==="LOSS"?"Perdida":"—"}</span></div>
+            <div style={{textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,padding:"3px 8px",borderRadius:20,background:isWin?"rgba(0,200,83,0.15)":t.resultado?"rgba(255,61,0,0.15)":"transparent",color:isWin?"#00C853":t.resultado?"#FF3D00":"#555570"}}>{t.resultado||"—"}</span></div>
             <div style={{textAlign:"right",fontFamily:"'Space Mono',monospace",fontSize:12,fontWeight:700,color:pnl===null?"#444460":pnl>=0?"#00C853":"#FF3D00"}}>{pnl===null?"—":(pnl>=0?"+":"")+"$"+pnl.toFixed(2)}</div>
           </div>
         );})}
