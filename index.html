@@ -258,7 +258,7 @@ function DCAPanel({prices}){
 // ══════════════════════════════════════════════════════════════
 // NUEVA PESTAÑA: INTERCAMBIO DE PARES
 // ══════════════════════════════════════════════════════════════
-function Intercambio({prices}){
+function Intercambio({prices,historial,setHistorial}){
   const monedas=COINS.filter(c=>c.symbol!=="USDT").map(c=>c.symbol);
   const gp=sym=>sym==="USDT"?1:(prices[sym]||0);
 
@@ -266,8 +266,8 @@ function Intercambio({prices}){
   const[desde,setDesde]=useState("ETH");
   const[hacia,setHacia]=useState("BTC");
   const[monto,setMonto]=useState("1");
-  const[historial,setHistorial]=useState([]);
   const[busqueda,setBusqueda]=useState("");
+  const[guardado,setGuardado]=useState(false);
 
   const precioDesde=gp(desde);
   const precioHacia=gp(hacia);
@@ -276,12 +276,15 @@ function Intercambio({prices}){
 
   const guardarConversion=()=>{
     if(!monto||parseFloat(monto)<=0||!tasaCruzada)return;
-    setHistorial(h=>[{
+    const nueva={
       id:Date.now(),desde,hacia,
       monto:parseFloat(monto),resultado,tasa:tasaCruzada,
       hora:new Date().toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit",second:"2-digit"}),
       fecha:new Date().toLocaleDateString("es-ES"),
-    },...h].slice(0,20));
+    };
+    setHistorial(h=>[nueva,...h].slice(0,50));
+    setGuardado(true);
+    setTimeout(()=>setGuardado(false),2500);
   };
 
   const pares=PARES_CRUZADOS.filter(([a,b])=>
@@ -370,12 +373,20 @@ function Intercambio({prices}){
           </div>
         )}
 
-        <button onClick={guardarConversion}
-          style={{padding:"13px 30px",borderRadius:10,border:"2px solid #3A3A58",
-            background:"#1C1C30",color:"#C8C8E0",fontSize:16,fontWeight:800,
-            cursor:"pointer",letterSpacing:"0.3px"}}>
-          💾 Guardar en historial
-        </button>
+        <div style={{display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+          <button onClick={guardarConversion}
+            style={{padding:"13px 30px",borderRadius:10,
+              border:guardado?"2px solid #00875A":"2px solid #3A3A58",
+              background:guardado?"rgba(0,135,90,0.25)":"#1C1C30",
+              color:guardado?"#00FF6A":"#C8C8E0",
+              fontSize:16,fontWeight:800,cursor:"pointer",letterSpacing:"0.3px",
+              transition:"all 0.3s"}}>
+            {guardado?"✅ ¡Registrado en historial!":"💾 Guardar en historial"}
+          </button>
+          {guardado&&<span style={{fontSize:14,color:"#00C853",fontWeight:700,animation:"fadeIn 0.2s ease"}}>
+            La conversión quedó guardada — puedes cambiar de pestaña sin perderla
+          </span>}
+        </div>
       </div>
 
       {/* ── TABLA DE PARES CRUZADOS ── */}
@@ -519,11 +530,13 @@ function App(){
   const[sortBy,setSortBy]=useState("value");
   const[filterCat,setFilterCat]=useState("Todas");
   const[trades,setTrades]=useState(()=>{try{const s=localStorage.getItem("cpro_trades");if(s)return JSON.parse(s);}catch(e){}return[];});
+  const[historialConv,setHistorialConv]=useState(()=>{try{const s=localStorage.getItem("cpro_historial");if(s)return JSON.parse(s);}catch(e){}return[];});
   const[time,setTime]=useState(new Date().toLocaleTimeString("es-ES"));
 
   useEffect(()=>{try{localStorage.setItem("cpro_qty",JSON.stringify(quantities));}catch(e){}},[quantities]);
   useEffect(()=>{try{localStorage.setItem("cpro_trades",JSON.stringify(trades));}catch(e){}},[trades]);
   useEffect(()=>{try{localStorage.setItem("cpro_hidden",JSON.stringify(hiddenCoins));}catch(e){}},[hiddenCoins]);
+  useEffect(()=>{try{localStorage.setItem("cpro_historial",JSON.stringify(historialConv));}catch(e){}},[historialConv]);
   const wsRef=useRef(null),mountRef=useRef(true);
   useEffect(()=>{const t=setInterval(()=>setTime(new Date().toLocaleTimeString("es-ES")),1000);return()=>clearInterval(t);},[]);
 
@@ -724,7 +737,7 @@ function App(){
         {tab==="operaciones"&&<FourCommas trades={trades} setTrades={setTrades} prices={prices}/>}
         {tab==="dca"&&<DCAPanel prices={prices}/>}
         {tab==="categorias"&&<Categories rows={visibleRows} totalPort={totalPort}/>}
-        {tab==="intercambio"&&<Intercambio prices={prices}/>}
+        {tab==="intercambio"&&<Intercambio prices={prices} historial={historialConv} setHistorial={setHistorialConv}/>}
       </div>
     </div>
   );
